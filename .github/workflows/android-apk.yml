@@ -1,0 +1,54 @@
+name: Build CrashDrive 3D Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Assets/**"
+      - "Packages/**"
+      - "ProjectSettings/**"
+      - ".github/workflows/android-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Build Android APK with Unity
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: 6000.0.32f1
+          targetPlatform: Android
+          buildMethod: BuildScript.BuildAndroid
+          buildsPath: build
+          allowDirtyBuild: true
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find build -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          test -s "$APK"
+          file "$APK"
+          mkdir -p artifacts
+          cp "$APK" artifacts/CrashDrive3D.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CrashDrive3D-Android-APK
+          path: artifacts/CrashDrive3D.apk
+          if-no-files-found: error
+          retention-days: 14
